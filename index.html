@@ -1095,6 +1095,9 @@
                     }
                 });
 
+                // マウスホイールでスライダー値を変更
+                this.setupWheelEvents();
+
                 // Keyboard shortcuts
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
@@ -1104,6 +1107,67 @@
                         e.preventDefault();
                         this.toggleFullscreen();
                     }
+                });
+            }
+
+            setupWheelEvents() {
+                // スライダー要素の配列
+                const sliders = [
+                    { range: this.gridSpacingRange, number: this.gridSpacingNumber, step: 1 },
+                    { range: this.gridRotationRange, number: this.gridRotationNumber, step: 1 },
+                    { range: this.markerSizeRange, number: this.markerSizeNumber, step: 1 },
+                    { range: this.emphasizeIntervalRange, number: this.emphasizeIntervalNumber, step: 1 },
+                    { range: this.emphasizeStrengthRange, number: this.emphasizeStrengthNumber, step: 1 }
+                ];
+
+                sliders.forEach(slider => {
+                    // レンジスライダーにホイールイベントを追加
+                    slider.range.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        
+                        const currentValue = parseInt(slider.range.value);
+                        const min = parseInt(slider.range.min);
+                        const max = parseInt(slider.range.max);
+                        const step = slider.step;
+                        
+                        // ホイールの方向に応じて値を増減
+                        let newValue = currentValue + (e.deltaY > 0 ? -step : step);
+                        
+                        // 範囲内に制限
+                        newValue = Math.max(min, Math.min(max, newValue));
+                        
+                        // 値を更新
+                        slider.range.value = newValue;
+                        slider.number.value = newValue;
+                        
+                        // input イベントを発火して変更を適用
+                        const inputEvent = new Event('input', { bubbles: true });
+                        slider.range.dispatchEvent(inputEvent);
+                    });
+
+                    // ナンバー入力にもホイールイベントを追加
+                    slider.number.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        
+                        const currentValue = parseInt(slider.number.value);
+                        const min = parseInt(slider.range.min);
+                        const max = parseInt(slider.range.max);
+                        const step = slider.step;
+                        
+                        // ホイールの方向に応じて値を増減
+                        let newValue = currentValue + (e.deltaY > 0 ? -step : step);
+                        
+                        // 範囲内に制限
+                        newValue = Math.max(min, Math.min(max, newValue));
+                        
+                        // 値を更新
+                        slider.number.value = newValue;
+                        slider.range.value = newValue;
+                        
+                        // input イベントを発火して変更を適用
+                        const inputEvent = new Event('input', { bubbles: true });
+                        slider.number.dispatchEvent(inputEvent);
+                    });
                 });
             }
 
