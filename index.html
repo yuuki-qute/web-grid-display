@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方眼グリッドアプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .grid-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .grid-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .control-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .control-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .fullscreen-button {
+            right: 20px;
+        }
+
+        .settings-popup {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            max-width: 400px;
+            width: 350px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            display: none;
+            cursor: move;
+            user-select: none;
+            border: 1px solid #ddd;
+        }
+
+        .settings-popup.show {
+            display: block;
+            animation: fadeInSlide 0.3s ease;
+        }
+
+        @keyframes fadeInSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .settings-popup.dragging {
+            pointer-events: none;
+        }
+
+        .settings-popup.dragging * {
+            pointer-events: none;
+        }
+
+        .popup-overlay {
+            /* オーバーレイを削除してモードレスにする */
+            display: none !important;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 16px;
+            cursor: move;
+        }
+
+        .settings-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            z-index: 10;
+            position: relative;
+        }
+
+        .close-button:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007AFF;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #007AFF;
+        }
+
+        .radio-item label {
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        /* プリセット用のボタン風ラジオボタンスタイル */
+        .preset-radio-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .preset-radio-item {
+            position: relative;
+        }
+
+        .preset-radio-item input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .preset-radio-item label {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f5f5f5;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 40px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .preset-radio-item label:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+            transform: translateY(-1px);
+        }
+
+        .preset-radio-item input[type="radio"]:checked + label {
+            background: #007AFF;
+            color: white;
+            border-color: #007AFF;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .preset-radio-item input[type="radio"]:focus + label {
+            outline: 2px solid #007AFF;
+            outline-offset: 2px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 20px 0;
+        }
+
+        .color-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .color-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .markers-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .marker {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .reset-button {
+            width: 100%;
+            padding: 12px 16px;
+            background: #666666;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reset-button:hover {
+            background: #555555;
+            transform: translateY(-1px);
+        }
+
+        .reset-button:active {
+            transform: translateY(0);
+        }
+
+        /* プリセットボタン風ラジオボタン */
+        .preset-radio-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .preset-radio-item {
+            position: relative;
+        }
+
+        .preset-radio-item input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .preset-radio-item label {
+            display: inline-block;
+            padding: 10px 16px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.2s ease;
+            min-width: 40px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .preset-radio-item label:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+            color: #444;
+        }
+
+        .preset-radio-item input[type="radio"]:checked + label {
+            background: #007AFF;
+            border-color: #007AFF;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .preset-radio-item input[type="radio"]:focus + label {
+            outline: 2px solid #007AFF;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-container">
+        <canvas class="grid-canvas" id="gridCanvas"></canvas>
+    </div>
+    
+    <div class="markers-container" id="markersContainer"></div>
+
+    <button class="control-button settings-button" id="settingsButton">⚙️ 設定</button>
+    <button class="control-button fullscreen-button" id="fullscreenButton">⛶ 全画面</button>
+
+    <div class="popup-overlay" id="popupOverlay"></div>
+    
+    <div class="settings-popup" id="settingsPopup">
+        <div class="settings-header">
+            <h2 class="settings-title">グリッド設定</h2>
+            <button class="close-button" id="closeButton">&times;</button>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">プリセット</label>
+            <div class="preset-radio-group">
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset1" name="preset" value="1" checked>
+                    <label for="preset1">1</label>
+                </div>
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset2" name="preset" value="2">
+                    <label for="preset2">2</label>
+                </div>
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset3" name="preset" value="3">
+                    <label for="preset3">3</label>
+                </div>
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset4" name="preset" value="4">
+                    <label for="preset4">4</label>
+                </div>
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset5" name="preset" value="5">
+                    <label for="preset5">5</label>
+                </div>
+                <div class="preset-radio-item">
+                    <input type="radio" id="preset6" name="preset" value="6">
+                    <label for="preset6">6</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="setting-group">
+            <label class="setting-label">グリッド種類</label>
+            <div class="radio-group">
+                <div class="radio-item">
+                    <input type="radio" id="gridTypeLines" name="gridType" value="lines" checked>
+                    <label for="gridTypeLines">罫線</label>
+                </div>
+                <div class="radio-item">
+                    <input type="radio" id="gridTypeDots" name="gridType" value="dots">
+                    <label for="gridTypeDots">ドット</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">グリッド間隔 (px)</label>
+            <div class="input-group">
+                <input type="range" id="gridSpacing" min="8" max="64" value="20">
+                <input type="number" id="gridSpacingNumber" min="8" max="64" value="20">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">回転角度 (度)</label>
+            <div class="input-group">
+                <input type="range" id="gridRotation" min="0" max="180" value="0">
+                <input type="number" id="gridRotationNumber" min="0" max="180" value="0">
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="setting-group">
+            <label class="setting-label">色設定</label>
+            <div class="color-group">
+                <div class="color-item">
+                    <input type="color" id="backgroundColor" value="#ffffff">
+                    <span class="color-label">背景色</span>
+                </div>
+                <div class="color-item">
+                    <input type="color" id="gridColor" value="#cccccc">
+                    <span class="color-label">グリッド</span>
+                </div>
+                <div class="color-item">
+                    <input type="color" id="markerColor" value="#ff0000">
+                    <span class="color-label">中央目印</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="setting-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="showMarkers">
+                <label class="setting-label" for="showMarkers">中央目印を表示</label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">目印サイズ (px)</label>
+            <div class="input-group">
+                <input type="range" id="markerSize" min="4" max="32" value="12">
+                <input type="number" id="markerSizeNumber" min="4" max="32" value="12">
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="setting-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="emphasizeGrid">
+                <label class="setting-label" for="emphasizeGrid">グリッド強調</label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">強調間隔 (グリッド数)</label>
+            <div class="input-group">
+                <input type="range" id="emphasizeInterval" min="2" max="10" value="5">
+                <input type="number" id="emphasizeIntervalNumber" min="2" max="10" value="5">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">強調度合い</label>
+            <div class="input-group">
+                <input type="range" id="emphasizeStrength" min="1" max="5" value="2">
+                <input type="number" id="emphasizeStrengthNumber" min="1" max="5" value="2">
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="setting-group">
+            <button class="reset-button" id="resetButton">デフォルトに戻す</button>
+        </div>
+    </div>
+
+    <script>
+        class GridApp {
+            constructor() {
+                this.canvas = document.getElementById('gridCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.markersContainer = document.getElementById('markersContainer');
+                
+                // Current preset number (1-6)
+                this.currentPreset = 1;
+                
+                // Default settings
+                this.defaultSettings = {
+                    gridType: 'lines',
+                    spacing: 20,
+                    backgroundColor: '#ffffff',
+                    gridColor: '#cccccc',
+                    showMarkers: true,
+                    markerSize: 12,
+                    markerColor: '#ff0000',
+                    emphasizeGrid: false,
+                    emphasizeInterval: 5,
+                    emphasizeStrength: 2,
+                    gridRotation: 0
+                };
+
+                // Load current preset and settings
+                this.loadCurrentPreset();
+                this.settings = this.loadSettings();
+
+                this.initializeElements();
+                this.setupEventListeners();
+                this.setupDragFunctionality(); // ドラッグ機能を追加
+                this.applySettingsToUI();
+                this.resizeCanvas();
+                this.drawGrid();
+                this.updateMarkers(); // 保存された目印設定を適用
+                
+                // 初期表示時にボタン位置を調整
+                setTimeout(() => this.adjustSettingsButtonPosition(), 100);
+                
+                // 起動時に設定ウィンドウを表示
+                this.showSettings();
+                
+                window.addEventListener('resize', () => {
+                    this.handleResize();
+                });
+                
+                // 全画面モードの変更を監視
+                document.addEventListener('fullscreenchange', () => {
+                    // 全画面切替後に少し遅延させて描画を更新
+                    setTimeout(() => {
+                        this.handleResize();
+                    }, 200);
+                });
+                
+                // DPRの変更を監視（ディスプレイ間の移動など）
+                const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+                mediaQuery.addEventListener('change', () => {
+                    this.handleResize();
+                });
+            }
+
+            loadCurrentPreset() {
+                try {
+                    const saved = localStorage.getItem('gridAppCurrentPreset');
+                    if (saved) {
+                        this.currentPreset = parseInt(saved);
+                        if (this.currentPreset < 1 || this.currentPreset > 6) {
+                            this.currentPreset = 1;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('プリセット番号の読み込みに失敗しました:', error);
+                    this.currentPreset = 1;
+                }
+            }
+
+            saveCurrentPreset() {
+                try {
+                    localStorage.setItem('gridAppCurrentPreset', this.currentPreset.toString());
+                } catch (error) {
+                    console.warn('プリセット番号の保存に失敗しました:', error);
+                }
+            }
+
+            loadSettings() {
+                try {
+                    const saved = localStorage.getItem(`gridAppSettings_preset${this.currentPreset}`);
+                    if (saved) {
+                        const parsedSettings = JSON.parse(saved);
+                        // デフォルト設定とマージして、新しい設定項目も対応
+                        return { ...this.defaultSettings, ...parsedSettings };
+                    }
+                } catch (error) {
+                    console.warn('設定の読み込みに失敗しました:', error);
+                }
+                return { ...this.defaultSettings };
+            }
+
+            saveSettings() {
+                try {
+                    localStorage.setItem(`gridAppSettings_preset${this.currentPreset}`, JSON.stringify(this.settings));
+                } catch (error) {
+                    console.warn('設定の保存に失敗しました:', error);
+                }
+            }
+
+            switchPreset(presetNumber) {
+                // 現在の設定を保存
+                this.saveSettings();
+                
+                // プリセット番号を変更
+                this.currentPreset = presetNumber;
+                this.saveCurrentPreset();
+                
+                // 新しいプリセットの設定を読み込み
+                this.settings = this.loadSettings();
+                
+                // UIに反映
+                this.applySettingsToUI();
+                this.drawGrid();
+                this.updateMarkers();
+                document.body.style.backgroundColor = this.settings.backgroundColor;
+            }
+
+            resetSettings() {
+                this.settings = { ...this.defaultSettings };
+                this.saveSettings();
+                this.applySettingsToUI();
+                this.drawGrid();
+                this.updateMarkers();
+                document.body.style.backgroundColor = this.settings.backgroundColor;
+            }
+
+            applySettingsToUI() {
+                // プリセット選択を反映
+                const presetRadio = document.getElementById(`preset${this.currentPreset}`);
+                if (presetRadio) {
+                    presetRadio.checked = true;
+                }
+                
+                // UI要素に設定値を適用
+                if (this.settings.gridType === 'lines') {
+                    this.gridTypeLinesRadio.checked = true;
+                } else {
+                    this.gridTypeDotsRadio.checked = true;
+                }
+                this.gridSpacingRange.value = this.settings.spacing;
+                this.gridSpacingNumber.value = this.settings.spacing;
+                this.backgroundColorInput.value = this.settings.backgroundColor;
+                this.gridColorInput.value = this.settings.gridColor;
+                this.markerColorInput.value = this.settings.markerColor;
+                this.showMarkersCheckbox.checked = this.settings.showMarkers;
+                this.markerSizeRange.value = this.settings.markerSize;
+                this.markerSizeNumber.value = this.settings.markerSize;
+                this.emphasizeGridCheckbox.checked = this.settings.emphasizeGrid;
+                this.emphasizeIntervalRange.value = this.settings.emphasizeInterval;
+                this.emphasizeIntervalNumber.value = this.settings.emphasizeInterval;
+                this.emphasizeStrengthRange.value = this.settings.emphasizeStrength;
+                this.emphasizeStrengthNumber.value = this.settings.emphasizeStrength;
+                this.gridRotationRange.value = this.settings.gridRotation;
+                this.gridRotationNumber.value = this.settings.gridRotation;
+                
+                // 背景色も適用
+                document.body.style.backgroundColor = this.settings.backgroundColor;
+            }
+
+            setupDragFunctionality() {
+                let isDragging = false;
+                let dragOffset = { x: 0, y: 0 };
+
+                const startDrag = (e) => {
+                    // クローズボタンがクリックされた場合はドラッグを開始しない
+                    if (e.target.classList.contains('close-button') || 
+                        e.target.closest('.close-button')) {
+                        return;
+                    }
+                    
+                    // タッチイベントとマウスイベントの両方に対応
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    isDragging = true;
+                    this.settingsPopup.classList.add('dragging');
+                    
+                    const rect = this.settingsPopup.getBoundingClientRect();
+                    dragOffset.x = clientX - rect.left;
+                    dragOffset.y = clientY - rect.top;
+                    
+                    e.preventDefault();
+                };
+
+                const drag = (e) => {
+                    if (!isDragging) return;
+                    
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    let newX = clientX - dragOffset.x;
+                    let newY = clientY - dragOffset.y;
+                    
+                    // 画面境界内に制限
+                    const maxX = window.innerWidth - this.settingsPopup.offsetWidth;
+                    const maxY = window.innerHeight - this.settingsPopup.offsetHeight;
+                    
+                    newX = Math.max(0, Math.min(maxX, newX));
+                    newY = Math.max(0, Math.min(maxY, newY));
+                    
+                    this.settingsPopup.style.left = newX + 'px';
+                    this.settingsPopup.style.top = newY + 'px';
+                    
+                    e.preventDefault();
+                };
+
+                const endDrag = () => {
+                    isDragging = false;
+                    this.settingsPopup.classList.remove('dragging');
+                };
+
+                // ヘッダー部分でドラッグ開始
+                this.settingsHeader = this.settingsPopup.querySelector('.settings-header');
+                
+                // マウスイベント
+                this.settingsHeader.addEventListener('mousedown', startDrag);
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', endDrag);
+                
+                // タッチイベント
+                this.settingsHeader.addEventListener('touchstart', startDrag, { passive: false });
+                document.addEventListener('touchmove', drag, { passive: false });
+                document.addEventListener('touchend', endDrag);
+            }
+
+            handleResize() {
+                // 複数回呼ばれることを防ぐためのデバウンス処理
+                if (this.resizeTimeout) {
+                    clearTimeout(this.resizeTimeout);
+                }
+                
+                this.resizeTimeout = setTimeout(() => {
+                    // 強制的にキャンバスサイズを再計算
+                    this.canvas.style.width = '';
+                    this.canvas.style.height = '';
+                    
+                    // 設定ウィンドウの位置を調整
+                    this.adjustSettingsPopupPosition();
+                    
+                    // 次のフレームで処理を実行
+                    requestAnimationFrame(() => {
+                        this.resizeCanvas();
+                        this.drawGrid();
+                        this.updateMarkers();
+                    });
+                }, 100);
+            }
+
+            adjustSettingsPopupPosition() {
+                // 設定ウィンドウが表示されていない場合は何もしない
+                if (!this.settingsPopup.classList.contains('show')) {
+                    return;
+                }
+                
+                const popup = this.settingsPopup;
+                const rect = popup.getBoundingClientRect();
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                let newLeft = rect.left;
+                let newTop = rect.top;
+                let moved = false;
+                
+                // 右端がはみ出している場合
+                if (rect.right > windowWidth) {
+                    newLeft = windowWidth - rect.width - 20; // 右端から20pxのマージン
+                    moved = true;
+                }
+                
+                // 左端がはみ出している場合
+                if (newLeft < 0) {
+                    newLeft = 20; // 左端から20pxのマージン
+                    moved = true;
+                }
+                
+                // 下端がはみ出している場合
+                if (rect.bottom > windowHeight) {
+                    newTop = windowHeight - rect.height - 20; // 下端から20pxのマージン
+                    moved = true;
+                }
+                
+                // 上端がはみ出している場合
+                if (newTop < 0) {
+                    newTop = 20; // 上端から20pxのマージン
+                    moved = true;
+                }
+                
+                // 位置が変更された場合のみスタイルを更新
+                if (moved) {
+                    popup.style.left = newLeft + 'px';
+                    popup.style.top = newTop + 'px';
+                    popup.style.right = 'auto'; // rightプロパティをリセット
+                }
+            }
+
+            initializeElements() {
+                this.settingsButton = document.getElementById('settingsButton');
+                this.fullscreenButton = document.getElementById('fullscreenButton');
+                this.settingsPopup = document.getElementById('settingsPopup');
+                this.popupOverlay = document.getElementById('popupOverlay');
+                this.closeButton = document.getElementById('closeButton');
+
+                // Preset elements
+                this.preset1Radio = document.getElementById('preset1');
+                this.preset2Radio = document.getElementById('preset2');
+                this.preset3Radio = document.getElementById('preset3');
+                this.preset4Radio = document.getElementById('preset4');
+                this.preset5Radio = document.getElementById('preset5');
+                this.preset6Radio = document.getElementById('preset6');
+
+                // Input elements
+                this.gridTypeLinesRadio = document.getElementById('gridTypeLines');
+                this.gridTypeDotsRadio = document.getElementById('gridTypeDots');
+                this.gridSpacingRange = document.getElementById('gridSpacing');
+                this.gridSpacingNumber = document.getElementById('gridSpacingNumber');
+                this.backgroundColorInput = document.getElementById('backgroundColor');
+                this.gridColorInput = document.getElementById('gridColor');
+                this.markerColorInput = document.getElementById('markerColor');
+                this.showMarkersCheckbox = document.getElementById('showMarkers');
+                this.markerSizeRange = document.getElementById('markerSize');
+                this.markerSizeNumber = document.getElementById('markerSizeNumber');
+                this.emphasizeGridCheckbox = document.getElementById('emphasizeGrid');
+                this.emphasizeIntervalRange = document.getElementById('emphasizeInterval');
+                this.emphasizeIntervalNumber = document.getElementById('emphasizeIntervalNumber');
+                this.emphasizeStrengthRange = document.getElementById('emphasizeStrength');
+                this.emphasizeStrengthNumber = document.getElementById('emphasizeStrengthNumber');
+                this.gridRotationRange = document.getElementById('gridRotation');
+                this.gridRotationNumber = document.getElementById('gridRotationNumber');
+                this.resetButton = document.getElementById('resetButton');
+            }
+
+            setupEventListeners() {
+                // Settings popup
+                this.settingsButton.addEventListener('click', () => this.toggleSettings());
+                
+                // クローズボタンのイベントリスナーを最初に設定（優先度を高くする）
+                this.closeButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    this.hideSettings();
+                });
+                
+                // クローズボタンでのドラッグを防ぐ
+                this.closeButton.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                });
+                
+                this.closeButton.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                });
+
+                // Fullscreen
+                this.fullscreenButton.addEventListener('click', () => this.toggleFullscreen());
+
+                // Preset selection
+                this.preset1Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(1);
+                });
+                this.preset2Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(2);
+                });
+                this.preset3Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(3);
+                });
+                this.preset4Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(4);
+                });
+                this.preset5Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(5);
+                });
+                this.preset6Radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.switchPreset(6);
+                });
+
+                // Settings inputs
+                this.gridTypeLinesRadio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.settings.gridType = 'lines';
+                        this.saveSettings();
+                        this.drawGrid();
+                    }
+                });
+
+                this.gridTypeDotsRadio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.settings.gridType = 'dots';
+                        this.saveSettings();
+                        this.drawGrid();
+                    }
+                });
+
+                // Grid spacing sync
+                this.gridSpacingRange.addEventListener('input', (e) => {
+                    this.settings.spacing = parseInt(e.target.value);
+                    this.gridSpacingNumber.value = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                    this.updateMarkers();
+                });
+
+                this.gridSpacingNumber.addEventListener('input', (e) => {
+                    const value = Math.min(64, Math.max(8, parseInt(e.target.value) || 8));
+                    this.settings.spacing = value;
+                    this.gridSpacingRange.value = value;
+                    e.target.value = value;
+                    this.saveSettings();
+                    this.drawGrid();
+                    this.updateMarkers();
+                });
+
+                // Colors
+                this.backgroundColorInput.addEventListener('change', (e) => {
+                    this.settings.backgroundColor = e.target.value;
+                    document.body.style.backgroundColor = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                this.gridColorInput.addEventListener('change', (e) => {
+                    this.settings.gridColor = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                this.markerColorInput.addEventListener('change', (e) => {
+                    this.settings.markerColor = e.target.value;
+                    this.saveSettings();
+                    this.updateMarkers();
+                });
+
+                // Markers
+                this.showMarkersCheckbox.addEventListener('change', (e) => {
+                    this.settings.showMarkers = e.target.checked;
+                    this.saveSettings();
+                    this.updateMarkers();
+                });
+
+                // Marker size sync
+                this.markerSizeRange.addEventListener('input', (e) => {
+                    this.settings.markerSize = parseInt(e.target.value);
+                    this.markerSizeNumber.value = e.target.value;
+                    this.saveSettings();
+                    this.updateMarkers();
+                });
+
+                this.markerSizeNumber.addEventListener('input', (e) => {
+                    const value = Math.min(32, Math.max(4, parseInt(e.target.value) || 4));
+                    this.settings.markerSize = value;
+                    this.markerSizeRange.value = value;
+                    e.target.value = value;
+                    this.saveSettings();
+                    this.updateMarkers();
+                });
+
+                // Grid emphasis
+                this.emphasizeGridCheckbox.addEventListener('change', (e) => {
+                    this.settings.emphasizeGrid = e.target.checked;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                // Emphasize interval sync
+                this.emphasizeIntervalRange.addEventListener('input', (e) => {
+                    this.settings.emphasizeInterval = parseInt(e.target.value);
+                    this.emphasizeIntervalNumber.value = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                this.emphasizeIntervalNumber.addEventListener('input', (e) => {
+                    const value = Math.min(10, Math.max(2, parseInt(e.target.value) || 2));
+                    this.settings.emphasizeInterval = value;
+                    this.emphasizeIntervalRange.value = value;
+                    e.target.value = value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                // Emphasize strength sync
+                this.emphasizeStrengthRange.addEventListener('input', (e) => {
+                    this.settings.emphasizeStrength = parseInt(e.target.value);
+                    this.emphasizeStrengthNumber.value = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                this.emphasizeStrengthNumber.addEventListener('input', (e) => {
+                    const value = Math.min(5, Math.max(1, parseInt(e.target.value) || 1));
+                    this.settings.emphasizeStrength = value;
+                    this.emphasizeStrengthRange.value = value;
+                    e.target.value = value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                // Grid rotation sync
+                this.gridRotationRange.addEventListener('input', (e) => {
+                    this.settings.gridRotation = parseInt(e.target.value);
+                    this.gridRotationNumber.value = e.target.value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                this.gridRotationNumber.addEventListener('input', (e) => {
+                    const value = Math.min(180, Math.max(0, parseInt(e.target.value) || 0));
+                    this.settings.gridRotation = value;
+                    this.gridRotationRange.value = value;
+                    e.target.value = value;
+                    this.saveSettings();
+                    this.drawGrid();
+                });
+
+                // Reset button
+                this.resetButton.addEventListener('click', () => {
+                    if (confirm('設定をデフォルトに戻しますか？')) {
+                        this.resetSettings();
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.hideSettings();
+                    }
+                    if (e.key === 'F11') {
+                        e.preventDefault();
+                        this.toggleFullscreen();
+                    }
+                });
+            }
+
+            resizeCanvas() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = this.canvas.getBoundingClientRect();
+                
+                // キャンバスの実際のサイズを設定
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                
+                // CSS サイズを設定
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+                
+                // コンテキストを再取得してスケール設定
+                this.ctx = this.canvas.getContext('2d');
+                this.ctx.scale(dpr, dpr);
+            }
+
+            drawGrid() {
+                const rect = this.canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+                
+                this.ctx.clearRect(0, 0, width, height);
+                
+                const spacing = this.settings.spacing;
+                const emphasize = this.settings.emphasizeGrid;
+                const emphasizeInterval = this.settings.emphasizeInterval;
+                const emphasizeStrength = this.settings.emphasizeStrength;
+                const rotation = this.settings.gridRotation;
+
+                // 回転を適用
+                this.ctx.save();
+                this.ctx.translate(width / 2, height / 2);
+                this.ctx.rotate(rotation * Math.PI / 180);
+                this.ctx.translate(-width / 2, -height / 2);
+
+                if (this.settings.gridType === 'lines') {
+                    this.drawLines(width, height, spacing, emphasize, emphasizeInterval, emphasizeStrength);
+                } else {
+                    this.drawDots(width, height, spacing, emphasize, emphasizeInterval, emphasizeStrength);
+                }
+
+                this.ctx.restore();
+            }
+
+            drawLines(width, height, spacing, emphasize, emphasizeInterval, emphasizeStrength) {
+                this.ctx.strokeStyle = this.settings.gridColor;
+                
+                // キャンバスの中央を原点とする
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // 回転を考慮して描画範囲を拡張
+                const diagonal = Math.sqrt(width * width + height * height);
+                const extent = Math.ceil(diagonal / spacing);
+                
+                // 垂直線を描画
+                for (let i = -extent; i <= extent; i++) {
+                    const x = centerX + i * spacing;
+                    const isEmphasized = emphasize && Math.abs(i) % emphasizeInterval === 0;
+                    this.ctx.lineWidth = isEmphasized ? emphasizeStrength : 1;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, -diagonal);
+                    this.ctx.lineTo(x, diagonal);
+                    this.ctx.stroke();
+                }
+                
+                // 水平線を描画
+                for (let i = -extent; i <= extent; i++) {
+                    const y = centerY + i * spacing;
+                    const isEmphasized = emphasize && Math.abs(i) % emphasizeInterval === 0;
+                    this.ctx.lineWidth = isEmphasized ? emphasizeStrength : 1;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-diagonal, y);
+                    this.ctx.lineTo(diagonal, y);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawDots(width, height, spacing, emphasize, emphasizeInterval, emphasizeStrength) {
+                this.ctx.fillStyle = this.settings.gridColor;
+                
+                // キャンバスの中央を原点とする
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // 回転を考慮して描画範囲を拡張
+                const diagonal = Math.sqrt(width * width + height * height);
+                const extent = Math.ceil(diagonal / spacing);
+                
+                // 中央から放射状にドットを描画
+                for (let i = -extent; i <= extent; i++) {
+                    for (let j = -extent; j <= extent; j++) {
+                        const x = centerX + i * spacing;
+                        const y = centerY + j * spacing;
+                        
+                        const isEmphasizedX = emphasize && Math.abs(i) % emphasizeInterval === 0;
+                        const isEmphasizedY = emphasize && Math.abs(j) % emphasizeInterval === 0;
+                        const isEmphasized = isEmphasizedX || isEmphasizedY;
+                        
+                        const dotSize = isEmphasized ? emphasizeStrength : 1;
+                        
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, dotSize, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    }
+                }
+            }
+
+            updateMarkers() {
+                this.markersContainer.innerHTML = '';
+                
+                if (!this.settings.showMarkers) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const width = rect.width;
+                const height = rect.height;
+                const spacing = this.settings.spacing;
+                const markerSize = this.settings.markerSize;
+                
+                // ページの中央点を計算（グリッドの原点と一致）
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // 中央目印を原点（キャンバス中央）に描画
+                const marker = document.createElement('div');
+                marker.className = 'marker';
+                marker.style.left = (centerX - markerSize / 2) + 'px';
+                marker.style.top = (centerY - markerSize / 2) + 'px';
+                marker.style.width = markerSize + 'px';
+                marker.style.height = markerSize + 'px';
+                marker.style.backgroundColor = this.settings.markerColor;
+                this.markersContainer.appendChild(marker);
+            }
+
+            showSettings() {
+                this.settingsPopup.classList.add('show');
+                // ウィンドウ表示後に位置を調整
+                setTimeout(() => this.adjustSettingsPopupPosition(), 10);
+            }
+
+            hideSettings() {
+                this.settingsPopup.classList.remove('show');
+            }
+
+            toggleSettings() {
+                if (this.settingsPopup.classList.contains('show')) {
+                    this.hideSettings();
+                } else {
+                    this.showSettings();
+                }
+            }
+
+            async toggleFullscreen() {
+                try {
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                        this.fullscreenButton.textContent = '🔳 全画面終了';
+                    } else {
+                        await document.exitFullscreen();
+                        this.fullscreenButton.textContent = '⛶ 全画面';
+                    }
+                    
+                    // 設定ボタンの位置を動的に調整
+                    this.adjustSettingsButtonPosition();
+                    
+                    // 全画面切替後に描画を更新（複数回実行で確実に）
+                    setTimeout(() => this.handleResize(), 100);
+                    setTimeout(() => this.handleResize(), 300);
+                } catch (err) {
+                    console.error('Fullscreen error:', err);
+                }
+            }
+
+            adjustSettingsButtonPosition() {
+                // 全画面ボタンの幅を取得
+                const fullscreenButtonRect = this.fullscreenButton.getBoundingClientRect();
+                const fullscreenButtonWidth = fullscreenButtonRect.width;
+                
+                // 設定ボタンの位置を調整（全画面ボタンの幅 + マージン20px + 元の右端位置20px）
+                const settingsButtonRight = fullscreenButtonWidth + 40;
+                this.settingsButton.style.right = settingsButtonRight + 'px';
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new GridApp();
+        });
+    </script>
+</body>
+</html>
