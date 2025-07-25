@@ -417,6 +417,24 @@
             outline: 2px solid #007AFF;
             outline-offset: 2px;
         }
+
+        /* 言語切替ドロップダウン */
+        .language-selector {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .language-selector select {
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -429,6 +447,13 @@
     <button class="control-button settings-button" id="settingsButton">⚙️ 設定</button>
     <button class="control-button fullscreen-button" id="fullscreenButton">⛶ 全画面</button>
 
+    <div class="language-selector">
+        <select id="languageSelector">
+            <option value="en">🇺🇸 English</option>
+            <option value="ja">🇯🇵 日本語</option>
+        </select>
+    </div>
+
     <div class="popup-overlay" id="popupOverlay"></div>
     
     <div class="settings-popup" id="settingsPopup">
@@ -437,8 +462,8 @@
             <button class="close-button" id="closeButton">&times;</button>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">プリセット</label>
+        <div class="setting-group" id="presetsGroup">
+            <label class="setting-label" id="presetsLabel">プリセット</label>
             <div class="preset-radio-group">
                 <div class="preset-radio-item">
                     <input type="radio" id="preset1" name="preset" value="1" checked>
@@ -469,8 +494,8 @@
 
         <div class="divider"></div>
 
-        <div class="setting-group">
-            <label class="setting-label">グリッド種類</label>
+        <div class="setting-group" id="gridTypeGroup">
+            <label class="setting-label" id="gridTypeLabel">グリッド種類</label>
             <div class="radio-group">
                 <div class="radio-item">
                     <input type="radio" id="gridTypeLines" name="gridType" value="lines" checked>
@@ -483,16 +508,16 @@
             </div>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">グリッド間隔 (px)</label>
+        <div class="setting-group" id="gridSpacingGroup">
+            <label class="setting-label" id="gridSpacingLabel">グリッド間隔 (px)</label>
             <div class="input-group">
                 <input type="range" id="gridSpacing" min="8" max="64" value="20">
                 <input type="number" id="gridSpacingNumber" min="8" max="64" value="20">
             </div>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">回転角度 (度)</label>
+        <div class="setting-group" id="rotationGroup">
+            <label class="setting-label" id="rotationLabel">回転角度 (度)</label>
             <div class="input-group">
                 <input type="range" id="gridRotation" min="0" max="180" value="0">
                 <input type="number" id="gridRotationNumber" min="0" max="180" value="0">
@@ -501,8 +526,8 @@
 
         <div class="divider"></div>
 
-        <div class="setting-group">
-            <label class="setting-label">色設定</label>
+        <div class="setting-group" id="colorSettingsGroup">
+            <label class="setting-label" id="colorSettingsLabel">色設定</label>
             <div class="color-group">
                 <div class="color-item">
                     <input type="color" id="backgroundColor" value="#ffffff">
@@ -521,15 +546,15 @@
 
         <div class="divider"></div>
 
-        <div class="setting-group">
+        <div class="setting-group" id="showMarkersGroup">
             <div class="checkbox-group">
                 <input type="checkbox" id="showMarkers">
-                <label class="setting-label" for="showMarkers">中央目印を表示</label>
+                <label class="setting-label" id="showMarkersLabel" for="showMarkers">中央目印を表示</label>
             </div>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">目印サイズ (px)</label>
+        <div class="setting-group" id="markerSizeGroup">
+            <label class="setting-label" id="markerSizeLabel">目印サイズ (px)</label>
             <div class="input-group">
                 <input type="range" id="markerSize" min="4" max="32" value="12">
                 <input type="number" id="markerSizeNumber" min="4" max="32" value="12">
@@ -538,23 +563,23 @@
 
         <div class="divider"></div>
 
-        <div class="setting-group">
+        <div class="setting-group" id="emphasizeGridGroup">
             <div class="checkbox-group">
                 <input type="checkbox" id="emphasizeGrid">
-                <label class="setting-label" for="emphasizeGrid">グリッド強調</label>
+                <label class="setting-label" id="emphasizeGridLabel" for="emphasizeGrid">グリッド強調</label>
             </div>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">強調間隔 (グリッド数)</label>
+        <div class="setting-group" id="emphasizeIntervalGroup">
+            <label class="setting-label" id="emphasizeIntervalLabel">強調間隔 (グリッド数)</label>
             <div class="input-group">
                 <input type="range" id="emphasizeInterval" min="2" max="10" value="5">
                 <input type="number" id="emphasizeIntervalNumber" min="2" max="10" value="5">
             </div>
         </div>
 
-        <div class="setting-group">
-            <label class="setting-label">強調度合い</label>
+        <div class="setting-group" id="emphasizeStrengthGroup">
+            <label class="setting-label" id="emphasizeStrengthLabel">強調度合い</label>
             <div class="input-group">
                 <input type="range" id="emphasizeStrength" min="1" max="5" value="2">
                 <input type="number" id="emphasizeStrengthNumber" min="1" max="5" value="2">
@@ -578,6 +603,59 @@
                 // Current preset number (1-6)
                 this.currentPreset = 1;
                 
+                // Current language - ブラウザの言語設定を取得してデフォルト言語を決定
+                this.currentLanguage = this.detectBrowserLanguage();
+                
+                // Language translations
+                this.translations = {
+                    en: {
+                        settingsTitle: 'Grid Settings',
+                        presets: 'Presets',
+                        gridType: 'Grid Type',
+                        lines: 'Lines',
+                        dots: 'Dots',
+                        gridSpacing: 'Grid Spacing (px)',
+                        rotation: 'Rotation (degrees)',
+                        colorSettings: 'Color Settings',
+                        backgroundColor: 'Background',
+                        gridColor: 'Grid',
+                        markerColor: 'Center Mark',
+                        showMarkers: 'Show Center Markers',
+                        markerSize: 'Marker Size (px)',
+                        emphasizeGrid: 'Emphasize Grid',
+                        emphasizeInterval: 'Emphasis Interval (grids)',
+                        emphasizeStrength: 'Emphasis Strength',
+                        resetButton: 'Reset to Default',
+                        resetConfirm: 'Reset settings to default?',
+                        settingsButton: '⚙️ Settings',
+                        fullscreenButton: '⛶ Fullscreen',
+                        fullscreenExit: '🔳 Exit Fullscreen'
+                    },
+                    ja: {
+                        settingsTitle: 'グリッド設定',
+                        presets: 'プリセット',
+                        gridType: 'グリッド種類',
+                        lines: '罫線',
+                        dots: 'ドット',
+                        gridSpacing: 'グリッド間隔 (px)',
+                        rotation: '回転角度 (度)',
+                        colorSettings: '色設定',
+                        backgroundColor: '背景色',
+                        gridColor: 'グリッド',
+                        markerColor: '中央目印',
+                        showMarkers: '中央目印を表示',
+                        markerSize: '目印サイズ (px)',
+                        emphasizeGrid: 'グリッド強調',
+                        emphasizeInterval: '強調間隔 (グリッド数)',
+                        emphasizeStrength: '強調度合い',
+                        resetButton: 'デフォルトに戻す',
+                        resetConfirm: '設定をデフォルトに戻しますか？',
+                        settingsButton: '⚙️ 設定',
+                        fullscreenButton: '⛶ 全画面',
+                        fullscreenExit: '🔳 全画面終了'
+                    }
+                };
+                
                 // Default settings
                 this.defaultSettings = {
                     gridType: 'lines',
@@ -595,12 +673,14 @@
 
                 // Load current preset and settings
                 this.loadCurrentPreset();
+                this.loadCurrentLanguage();
                 this.settings = this.loadSettings();
 
                 this.initializeElements();
                 this.setupEventListeners();
                 this.setupDragFunctionality(); // ドラッグ機能を追加
                 this.applySettingsToUI();
+                this.updateUI(); // 言語に応じたUIを初期化
                 this.resizeCanvas();
                 this.drawGrid();
                 this.updateMarkers(); // 保存された目印設定を適用
@@ -630,6 +710,18 @@
                 });
             }
 
+            detectBrowserLanguage() {
+                // ブラウザの言語設定を取得
+                const browserLang = navigator.language || navigator.userLanguage || 'en';
+                
+                // 日本語（ja, ja-JP など）の場合は日本語を、そうでなければ英語を返す
+                if (browserLang.toLowerCase().startsWith('ja')) {
+                    return 'ja';
+                } else {
+                    return 'en';
+                }
+            }
+
             loadCurrentPreset() {
                 try {
                     const saved = localStorage.getItem('gridAppCurrentPreset');
@@ -650,6 +742,116 @@
                     localStorage.setItem('gridAppCurrentPreset', this.currentPreset.toString());
                 } catch (error) {
                     console.warn('プリセット番号の保存に失敗しました:', error);
+                }
+            }
+
+            loadCurrentLanguage() {
+                try {
+                    const saved = localStorage.getItem('gridAppCurrentLanguage');
+                    if (saved && this.translations[saved]) {
+                        this.currentLanguage = saved;
+                    } else {
+                        // 保存された言語設定がない場合、ブラウザの言語を使用
+                        this.currentLanguage = this.detectBrowserLanguage();
+                    }
+                } catch (error) {
+                    console.warn('言語設定の読み込みに失敗しました:', error);
+                    this.currentLanguage = this.detectBrowserLanguage();
+                }
+            }
+
+            saveCurrentLanguage() {
+                try {
+                    localStorage.setItem('gridAppCurrentLanguage', this.currentLanguage);
+                } catch (error) {
+                    console.warn('言語設定の保存に失敗しました:', error);
+                }
+            }
+
+            switchLanguage(language) {
+                if (!this.translations[language]) return;
+                
+                this.currentLanguage = language;
+                this.saveCurrentLanguage();
+                this.updateUI();
+            }
+
+            getText(key) {
+                return this.translations[this.currentLanguage][key] || this.translations.en[key] || key;
+            }
+
+            updateUI() {
+                // ボタンテキストを更新
+                this.settingsButton.textContent = this.getText('settingsButton');
+                
+                // 全画面ボタンのテキストを現在の状態に応じて更新
+                if (document.fullscreenElement) {
+                    this.fullscreenButton.textContent = this.getText('fullscreenExit');
+                } else {
+                    this.fullscreenButton.textContent = this.getText('fullscreenButton');
+                }
+                
+                // 設定ポップアップのテキストを更新
+                this.updateSettingsPopupTexts();
+                
+                // 言語セレクターの値を更新
+                const languageSelector = document.getElementById('languageSelector');
+                if (languageSelector) {
+                    languageSelector.value = this.currentLanguage;
+                }
+                
+                // ボタンのレイアウトを再調整
+                setTimeout(() => {
+                    this.adjustSettingsButtonPosition();
+                }, 50);
+            }
+
+            updateSettingsPopupTexts() {
+                // 設定ポップアップ内のテキストを更新
+                const settingsTitle = this.settingsPopup.querySelector('.settings-title');
+                if (settingsTitle) {
+                    settingsTitle.textContent = this.getText('settingsTitle');
+                }
+                
+                // 各ラベルをIDベースで更新
+                const labelElements = [
+                    { id: 'presetsLabel', key: 'presets' },
+                    { id: 'gridTypeLabel', key: 'gridType' },
+                    { id: 'gridSpacingLabel', key: 'gridSpacing' },
+                    { id: 'rotationLabel', key: 'rotation' },
+                    { id: 'colorSettingsLabel', key: 'colorSettings' },
+                    { id: 'showMarkersLabel', key: 'showMarkers' },
+                    { id: 'markerSizeLabel', key: 'markerSize' },
+                    { id: 'emphasizeGridLabel', key: 'emphasizeGrid' },
+                    { id: 'emphasizeIntervalLabel', key: 'emphasizeInterval' },
+                    { id: 'emphasizeStrengthLabel', key: 'emphasizeStrength' }
+                ];
+                
+                labelElements.forEach(({ id, key }) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = this.getText(key);
+                    }
+                });
+                
+                // ラジオボタンのラベルを更新
+                const gridTypeLinesLabel = this.settingsPopup.querySelector('label[for="gridTypeLines"]');
+                const gridTypeDotsLabel = this.settingsPopup.querySelector('label[for="gridTypeDots"]');
+                if (gridTypeLinesLabel) gridTypeLinesLabel.textContent = this.getText('lines');
+                if (gridTypeDotsLabel) gridTypeDotsLabel.textContent = this.getText('dots');
+                
+                // 色設定のラベルを更新
+                const colorLabels = this.settingsPopup.querySelectorAll('.color-label');
+                if (colorLabels.length >= 3) {
+                    colorLabels[0].textContent = this.getText('backgroundColor');
+                    colorLabels[1].textContent = this.getText('gridColor');
+                    colorLabels[2].textContent = this.getText('markerColor');
+                }
+                
+                // リセットボタンを更新
+                const resetButton = this.settingsPopup.querySelector('.reset-button');
+                if (resetButton) {
+                    resetButton.textContent = this.getText('resetButton');
                 }
             }
 
@@ -877,6 +1079,7 @@
                 this.settingsPopup = document.getElementById('settingsPopup');
                 this.popupOverlay = document.getElementById('popupOverlay');
                 this.closeButton = document.getElementById('closeButton');
+                this.languageSelector = document.getElementById('languageSelector');
 
                 // Preset elements
                 this.preset1Radio = document.getElementById('preset1');
@@ -929,6 +1132,11 @@
 
                 // Fullscreen
                 this.fullscreenButton.addEventListener('click', () => this.toggleFullscreen());
+
+                // Language selector
+                this.languageSelector.addEventListener('change', (e) => {
+                    this.switchLanguage(e.target.value);
+                });
 
                 // Preset selection
                 this.preset1Radio.addEventListener('change', (e) => {
@@ -1090,7 +1298,7 @@
 
                 // Reset button
                 this.resetButton.addEventListener('click', () => {
-                    if (confirm('設定をデフォルトに戻しますか？')) {
+                    if (confirm(this.getText('resetConfirm'))) {
                         this.resetSettings();
                     }
                 });
@@ -1312,6 +1520,8 @@
                 this.settingsPopup.classList.add('show');
                 // ウィンドウ表示後に位置を調整
                 setTimeout(() => this.adjustSettingsPopupPosition(), 10);
+                // 表示時に最新の言語でテキストを更新
+                this.updateSettingsPopupTexts();
             }
 
             hideSettings() {
@@ -1330,10 +1540,10 @@
                 try {
                     if (!document.fullscreenElement) {
                         await document.documentElement.requestFullscreen();
-                        this.fullscreenButton.textContent = '🔳 全画面終了';
+                        this.fullscreenButton.textContent = this.getText('fullscreenExit');
                     } else {
                         await document.exitFullscreen();
-                        this.fullscreenButton.textContent = '⛶ 全画面';
+                        this.fullscreenButton.textContent = this.getText('fullscreenButton');
                     }
                     
                     // 設定ボタンの位置を動的に調整
